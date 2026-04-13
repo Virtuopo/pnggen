@@ -22,19 +22,28 @@ import zlib
 import struct
 
 
-def make_black_png(width, height):
-    """Build a valid black PNG in memory using only stdlib."""
+def make_png(width, height, transparent=False):
+    """Build a solid black (or fully transparent) PNG using only stdlib."""
     def png_chunk(name, data):
         crc = zlib.crc32(name + data) & 0xFFFFFFFF
         return struct.pack(">I", len(data)) + name + data + struct.pack(">I", crc)
 
     signature = b"\x89PNG\r\n\x1a\n"
 
-    # IHDR: width, height, bit_depth=8, color_type=2 (RGB), compress=0, filter=0, interlace=0
-    ihdr = png_chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+    if transparent:
+        # color_type=6: RGBA — all zeros gives transparent black
+        color_type = 6
+        bytes_per_pixel = 4
+    else:
+        # color_type=2: RGB — all zeros gives solid black
+        color_type = 2
+        bytes_per_pixel = 3
 
-    # Image data: one filter byte (0 = None) + width*3 zero bytes per row
-    raw_row = b"\x00" + b"\x00" * (width * 3)
+    # IHDR: width, height, bit_depth=8, color_type, compress=0, filter=0, interlace=0
+    ihdr = png_chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, color_type, 0, 0, 0))
+
+    # Image data: one filter byte (0 = None) + pixel bytes per row
+    raw_row = b"\x00" + b"\x00" * (width * bytes_per_pixel)
     idat = png_chunk(b"IDAT", zlib.compress(raw_row * height))
 
     iend = png_chunk(b"IEND", b"")
@@ -43,13 +52,19 @@ def make_black_png(width, height):
 
 
 def main():
-    if len(sys.argv) not in (5, 6):
-        print("Usage: python pnggen.py <width> <height> <start> <end> [template]")
-        print("Example: python pnggen.py 1920 1080 0000 0100 BlackXXXXFrames.png")
+    args = sys.argv[1:]
+
+    transparent = "--transparent" in args
+    if transparent:
+        args.remove("--transparent")
+
+    if len(args) not in (4, 5):
+        print("Usage: python pnggen.py <width> <height> <start> <end> [template] [--transparent]")
+        print("Example: python pnggen.py 1920 1080 0000 0100 BlackXXXXFrames.png --transparent")
         sys.exit(1)
 
-    width_arg, height_arg, start_arg, end_arg = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
-    template = sys.argv[5] if len(sys.argv) == 6 else None
+    width_arg, height_arg, start_arg, end_arg = args[0], args[1], args[2], args[3]
+    template = args[4] if len(args) == 5 else None
 
     try:
         width = int(width_arg)
@@ -74,7 +89,7 @@ def main():
         sys.exit(1)
 
     count = end - start + 1
-    png_data = make_black_png(width, height)
+    png_data = make_png(width, height, transparent=transparent)
 
     if template:
         match = re.search(r'(X+)', template)
@@ -97,7 +112,8 @@ def main():
         with open(filename, "wb") as f:
             f.write(png_data)
 
-    print(f"Generated {count} image{'s' if count != 1 else ''} ({width}x{height}px black PNG).")
+    fill = "transparent" if transparent else "black"
+    print(f"Generated {count} image{'s' if count != 1 else ''} ({width}x{height}px {fill} PNG).")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # pnggen
 
-Generates a sequence of solid black PNG files over a numbered filename range. No dependencies — uses only the Python standard library.
+Generates a sequence of solid black or fully transparent PNG files over a numbered filename range. No dependencies — uses only the Python standard library.
 
 ## Requirements
 
@@ -9,7 +9,7 @@ Python 3.6+. No packages to install.
 ## Usage
 
 ```
-python pnggen.py <width> <height> <start> <end> [template]
+python pnggen.py <width> <height> <start> <end> [template] [--transparent]
 ```
 
 | Argument | Description |
@@ -19,6 +19,7 @@ python pnggen.py <width> <height> <start> <end> [template]
 | `start` | First file number (e.g. `0000`) |
 | `end` | Last file number (e.g. `0100`) |
 | `template` | *(Optional)* Filename template — see below |
+| `--transparent` | *(Optional)* Generate fully transparent RGBA PNGs instead of solid black |
 
 The number of images generated is `end - start + 1`.
 
@@ -49,6 +50,18 @@ python pnggen.py 3840 2160 1 10 shot_XXXX_comp.png
 ```
 
 Produces: `shot_0001_comp.png`, `shot_0002_comp.png`, … `shot_0010_comp.png`
+
+### Transparent frames
+
+Add `--transparent` to generate fully transparent RGBA PNGs instead of solid black:
+
+```bash
+python pnggen.py 1920 1080 0000 0023 --transparent
+```
+
+```bash
+python pnggen.py 1920 1080 0000 0023 AlphaXXXXFrame.png --transparent
+```
 
 ### Single image
 
